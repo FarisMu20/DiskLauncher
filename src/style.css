@@ -258,3 +258,40 @@ header, main, footer { position: relative; z-index: 1; }
 @media (max-width: 1290px) { .hints { gap: 12px; } .hints span { font-size: 0; } .hints b { margin-right: 0; } }   /* narrow window: buttons only, no labels */
 @media (max-width: 760px) { .hints { display: none; } .top { padding: 0 22px; } }
 [hidden] { display: none !important; }
+
+/* ================= layouts (Carousel is the default row above) ================= */
+.rail[data-layout="grid"], .rail[data-layout="list"] { overflow-x: hidden; overflow-y: auto; scrollbar-width: none; flex: 0 1 auto; min-height: 0; padding: 26px 0;
+  -webkit-mask: linear-gradient(transparent, #000 24px, #000 calc(100% - 24px), transparent); mask: linear-gradient(transparent, #000 24px, #000 calc(100% - 24px), transparent); }
+.rail[data-layout="grid"]::-webkit-scrollbar, .rail[data-layout="list"]::-webkit-scrollbar { display: none; }
+.rail.none { min-height: 220px; }
+
+.rail[data-layout="grid"] { --tile: clamp(104px, 13vh, 150px); }
+.rail[data-layout="grid"] .track { width: 100%; min-height: 0; display: grid; grid-template-columns: repeat(auto-fill, var(--tile)); justify-content: center; gap: 36px 40px; padding: 14px 48px 30px; }
+
+.tinfo { display: none; min-width: 0; flex-direction: column; gap: 3px; text-align: left; }
+.tinfo b { font-size: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tinfo span { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rail[data-layout="list"] .track { width: min(680px, 88%); margin: 0 auto; min-height: 0; flex-direction: column; gap: 14px; padding: 8px 6px 22px; }
+.rail[data-layout="list"] .tile { width: 100%; height: 84px; border-radius: 24px; background: var(--card); box-shadow: var(--shadow); display: flex; align-items: center; gap: 20px; padding: 0 22px; }
+.rail[data-layout="list"] .tile.sel { transform: scale(1.025); box-shadow: 0 0 0 4px var(--ring), var(--shadow); }
+.rail[data-layout="list"] .bob, .rail[data-layout="list"] .tile.sel .bob { position: relative; inset: auto; width: 60px; height: 60px; flex: none; animation: none; }
+.rail[data-layout="list"] .shade, .rail[data-layout="list"] .ring { display: none; }
+.rail[data-layout="list"] .tinfo { display: flex; }
+
+/* switching sort / layout: discs pop in */
+.track.fresh .tile { animation: tin .5s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 28ms); }
+@keyframes tin { from { opacity: 0; transform: translateY(18px) scale(.8); } }
+
+/* remove game: disc spins away and shrinks */
+.rail .tile.removing { pointer-events: none; z-index: 3; }
+.rail .tile.removing .bob { animation: tileout .48s cubic-bezier(.5, -.3, .7, .3) forwards; }
+.rail .tile.removing .shade { opacity: 0; transition: opacity .2s; animation: none; }
+@keyframes tileout { 25% { transform: translateY(-18px) scale(1.08) rotate(-8deg); } 100% { transform: translateY(36px) scale(.05) rotate(220deg); opacity: 0; } }
+.rail[data-layout="list"] .tile.removing { animation: rowout .48s ease-in forwards; }
+@keyframes rowout { to { opacity: 0; transform: translateX(70px) scale(.92); } }
+
+/* remove disc image: the printed label peels away */
+.disc.peeling .label { animation: peel .5s cubic-bezier(.5, 0, .8, .4) forwards; }
+@keyframes peel { 35% { transform: scale(1.06) rotate(-25deg); } 100% { transform: scale(.1) rotate(260deg); opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) { .track.fresh .tile { animation: none; } }

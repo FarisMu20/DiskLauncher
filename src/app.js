@@ -12,6 +12,19 @@ let busy = false, fs = false, overlayOpen = false;
 let playing = null;     // { id, start, timer } while a game is running
 let muted = localStorage.getItem('muted') === '1';
 
+// sort + layout (remembered between launches)
+const SORTS = [['none', 'Added order'], ['name', 'Name A–Z'], ['time', 'Most played'], ['random', 'Random']];
+const LAYOUTS = [['carousel', 'Carousel'], ['grid', 'Grid'], ['list', 'List']];
+const LAYOUT_ICONS = {
+  carousel: '<svg viewBox="0 0 24 24"><circle cx="4.6" cy="12" r="2.6" fill="currentColor" opacity=".55"/><circle cx="12" cy="12" r="4" fill="currentColor"/><circle cx="19.4" cy="12" r="2.6" fill="currentColor" opacity=".55"/></svg>',
+  grid: '<svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="3.2" fill="currentColor"/><circle cx="17" cy="7" r="3.2" fill="currentColor"/><circle cx="7" cy="17" r="3.2" fill="currentColor"/><circle cx="17" cy="17" r="3.2" fill="currentColor"/></svg>',
+  list: '<svg viewBox="0 0 24 24"><circle cx="5" cy="7" r="1.9" fill="currentColor"/><circle cx="5" cy="12" r="1.9" fill="currentColor"/><circle cx="5" cy="17" r="1.9" fill="currentColor"/><path d="M10 7h10M10 12h10M10 17h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+};
+let sortMode = localStorage.getItem('sort'); if (!SORTS.some((s) => s[0] === sortMode)) sortMode = 'none';
+let layout = localStorage.getItem('layout'); if (!LAYOUTS.some((s) => s[0] === layout)) layout = 'carousel';
+let raw = [];            // games in the order the backend gave them (used by "Added order")
+const rank = new Map();  // random order, stays the same until you pick Random again
+
 /* ================= sound (generated in code, no files) ================= */
 let ac = null;
 function ctx() {
@@ -117,7 +130,15 @@ addEventListener('focus', () => music.sync());
 /* ================= disc images: fallback store (used when the Rust side is older) ================= */
 const lsCovers = () => { try { return JSON.parse(localStorage.getItem('covers') || '{}'); } catch (e) { return {}; } };
 const putCovers = (c) => localStorage.setItem('covers', JSON.stringify(c));
-const mergeCovers = (list) => { const c = lsCovers(); return list.map((g) => (g.cover ? g : { ...g, cover: c[g.id] || '' })); };
+const mergeCovers = (list) => { const c = lsCovers(); raw = list.map((g) => (g.cover ? g : { ...g, cover: c[g.id] || '' })); return sortList(raw); };
+function sortList(list) {
+  const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+  const l = [...list];
+  if (sortMode === 'name') l.sort(byName);
+  else if (sortMode === 'time') l.sort((a, b) => (b.total_secs || 0) - (a.total_secs || 0) || byName(a, b));
+  else if (sortMode === 'random') { l.forEach((g) => { if (!rank.has(g.id)) rank.set(g.id, Math.random()); }); l.sort((a, b) => rank.get(a.id) - rank.get(b.id)); }
+  return l;
+}
 const noCmd = (e) => /not found/i.test(String(e));
 
 /* ================= helpers ================= */
@@ -173,11 +194,13 @@ function render() {
   track.innerHTML = '';
   games.forEach((g, i) => {
     const t = el('button', 'tile'); t.setAttribute('aria-label', g.name);
-    t.style.setProperty('--d', `${-(i * .55)}s`);
+    t.style.setProperty('--d', `${-(i * .55)}s`); t.style.setProperty('--i', Math.min(i, 24));
     const bob = withRing(makeDisc(g.cover));
     const tier = tierOf(g.total_secs);
     if (tier) { const s = el('div', 'sticker ' + tier.cls); s.textContent = tier.txt; bob.append(s); }
     t.append(el('div', 'shade'), bob);
+    const info = el('div', 'tinfo'), nm = el('b', ''), sb = el('span', '');
+    nm.textContent = g.name; sb.textContent = subOf(g); info.append(nm, sb); t.append(info);   // only visible in List layout
     t._sp = t.querySelector('.spin');
     t.onmouseenter = () => { t._hover = true; };
     t.onmouseleave = () => { t._hover = false; };
@@ -187,14 +210,15 @@ function render() {
     track.append(t);
   });
   sel = Math.max(0, Math.min(sel, games.length - 1));
-  $('#empty').hidden = games.length > 0;
+  $('#empty').hidden = games.length > 0; rail.classList.toggle('none', !games.length);
   if (!games.length) { zone = 'dock'; dockIdx = 0; }   // empty: point the cursor at the + button
   update(true);
 }
+function subOf(g) { const t = g.total_secs || 0; return ago(g.last_played) + (t >= 60 ? ` · ${dur(t)} total` : ''); }
 function labels() {
   if (zone === 'dock') { const b = dockBtns[dockIdx]; return [b.dataset.label, b.dataset.sub || '']; }
   const g = games[sel];
-  if (g) { const t = g.total_secs || 0; return [g.name, ago(g.last_played) + (t >= 60 ? ` · ${dur(t)} total` : '')]; }
+  if (g) return [g.name, subOf(g)];
   return ['No games yet', 'Press the + button below to add your first game'];
 }
 function update(instant) {
@@ -203,11 +227,15 @@ function update(instant) {
   dockBtns.forEach((b, i) => b.classList.toggle('cur', zone === 'dock' && i === dockIdx));
 
   const t = tiles[sel];
-  if (t) {
+  if (t && layout === 'carousel') {
+    rail.scrollTop = 0;
     const x = rail.clientWidth / 2 - (t.offsetLeft + t.offsetWidth / 2);
     if (instant) track.style.transition = 'none';
     track.style.transform = `translateX(${x}px)`;
     if (instant) { track.offsetWidth; track.style.transition = ''; }
+  } else if (t) {   // grid / list: the rail scrolls vertically
+    track.style.transform = '';
+    rail.scrollTo({ top: track.offsetTop + t.offsetTop - rail.clientHeight / 2 + t.offsetHeight / 2, behavior: instant ? 'auto' : 'smooth' });
   }
 
   const [title, sub] = labels();
@@ -236,8 +264,25 @@ function nav(dir) {
   if (n === dockIdx) return sfx.edge();
   dockIdx = n; sfx.move(); update(false);
 }
+function gridCols() {
+  const t = [...track.children]; if (t.length < 2) return 1;
+  let n = 0; while (n < t.length && t[n].offsetTop === t[0].offsetTop) n++;
+  return n;
+}
 function vert(dir) {
   hoverDock = false;
+  if (zone === 'rail' && games.length && layout !== 'carousel') {
+    const last = games.length - 1;
+    if (layout === 'list') {
+      if (dir < 0 && sel > 0) return select(sel - 1);
+      if (dir > 0 && sel < last) return select(sel + 1);
+    } else {
+      const c = gridCols();
+      if (dir < 0 && sel - c >= 0) return select(sel - c);
+      if (dir > 0 && sel + c <= last) return select(sel + c);
+      if (dir > 0 && Math.floor(sel / c) < Math.floor(last / c)) return select(last);   // short last row
+    }
+  }
   if (dir > 0 && zone === 'rail') { zone = 'dock'; sfx.move(); update(false); }
   else if (dir < 0 && zone === 'dock' && games.length) { zone = 'rail'; sfx.move(); update(false); }
 }
@@ -290,7 +335,7 @@ async function launch(idx) {
   if (!g || busy) return;
   busy = true; overlayOpen = true;
 
-  const tr = track.children[idx].getBoundingClientRect();
+  const tr = track.children[idx].querySelector('.disc').getBoundingClientRect();
   const r = $('#launch');
   r.style.setProperty('--dx', `${tr.left + tr.width / 2 - innerWidth / 2}px`);
   r.style.setProperty('--dy', `${tr.top + tr.height / 2 - innerHeight / 2}px`);
@@ -317,9 +362,14 @@ async function launch(idx) {
 }
 async function removeSel() {
   const g = games[sel]; if (!g) return;
-  const list = await call('remove_game', { id: g.id });
+  const tile = track.children[sel];
+  if (tile && tile.classList.contains('removing')) return;
+  if (tile) tile.classList.add('removing');   // disc spins away + shrinks, then the list updates
+  sfx.remove();
+  const [list] = await Promise.all([call('remove_game', { id: g.id }), sleep(480)]);
+  if (!list) { if (tile) tile.classList.remove('removing'); return; }
   { const c = lsCovers(); delete c[g.id]; putCovers(c); }
-  if (list) { games = mergeCovers(list); render(); sfx.remove(); toast(`Removed ${g.name}`); }
+  games = mergeCovers(list); render(); toast(`Removed ${g.name}`);
 }
 function openRename() {
   const g = games[sel]; if (!g) return;
@@ -345,12 +395,16 @@ $('#mCover').onclick = () => { closeMenu(true); $('#coverFile').click(); };
 $('#mUncover').onclick = async () => {
   closeMenu(true);
   const g = games[sel]; if (!g) return;
+  const disc = track.children[sel] && track.children[sel].querySelector('.disc');
+  if (disc) disc.classList.add('peeling'); sfx.remove();   // the printed label peels off
+  const wait = sleep(520);
   let list;
   try { list = await invoke('remove_cover', { id: g.id }); }
-  catch (e) { if (!noCmd(e)) { toast(String(e)); return; } list = games.map((x) => (x.id === g.id ? { ...x, cover: '' } : x)); }
+  catch (e) { if (!noCmd(e)) { if (disc) disc.classList.remove('peeling'); toast(String(e)); return; } list = games.map((x) => (x.id === g.id ? { ...x, cover: '' } : x)); }
   const c = lsCovers(); delete c[g.id]; putCovers(c);
   list = list.map((x) => (x.id === g.id ? { ...x, cover: '' } : x));
-  games = list; render(); sfx.remove();
+  await wait;
+  games = mergeCovers(list); render();
 };
 // pick an image -> square-crop to 640px WebP -> store it
 $('#coverFile').onchange = async (e) => {
@@ -407,6 +461,28 @@ async function toggleFullscreen() {
 $('#btnAdd').onclick = addGames;
 $('#btnStats').onclick = openStats;
 $('#btnScan').onclick = openScan;
+function pop() { track.classList.remove('fresh'); void track.offsetWidth; track.classList.add('fresh'); clearTimeout(pop.t); pop.t = setTimeout(() => track.classList.remove('fresh'), 1000); }
+function setSort(m, animate = true) {
+  sortMode = m; localStorage.setItem('sort', m);
+  $('#btnSort').dataset.sub = SORTS.find((s) => s[0] === m)[1];
+  if (!animate) return;
+  const keep = games[sel] && games[sel].id;
+  if (m === 'random') rank.clear();
+  games = sortList(raw);
+  sel = Math.max(0, games.findIndex((g) => g.id === keep));
+  render(); pop();
+}
+function setLayout(l, animate = true) {
+  layout = l; localStorage.setItem('layout', l);
+  rail.dataset.layout = l;
+  $('#btnLayout').innerHTML = LAYOUT_ICONS[l];
+  $('#btnLayout').dataset.sub = LAYOUTS.find((s) => s[0] === l)[1];
+  if (!animate) return;
+  render(); pop();
+}
+const nextOf = (list, cur) => list[(list.findIndex((s) => s[0] === cur) + 1) % list.length][0];
+$('#btnSort').onclick = () => { setSort(nextOf(SORTS, sortMode)); sfx.toggle(); update(false); toast(`Sort: ${$('#btnSort').dataset.sub}`); };
+$('#btnLayout').onclick = () => { setLayout(nextOf(LAYOUTS, layout)); sfx.toggle(); update(false); toast(`Layout: ${$('#btnLayout').dataset.sub}`); };
 $('#btnTheme').onclick = () => { setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); sfx.toggle(); update(false); };
 $('#btnSound').onclick = () => { setMuted(!muted); sfx.toggle(); update(false); };
 $('#btnFull').onclick = toggleFullscreen;
@@ -483,6 +559,8 @@ addEventListener('keydown', (e) => {
   else if (k.toLowerCase() === 's') openStats();
   else if (k.toLowerCase() === 'f') openScan();
   else if (k.toLowerCase() === 't') $('#btnTheme').click();
+  else if (k.toLowerCase() === 'o') $('#btnSort').click();
+  else if (k.toLowerCase() === 'l') $('#btnLayout').click();
   else if (k.toLowerCase() === 'm') $('#btnSound').click();
   else if (k === 'F11') { e.preventDefault(); toggleFullscreen(); }
 });
@@ -527,6 +605,7 @@ function poll() {
       press('b', b(1), back);
       press('x', b(2), () => zone === 'rail' && openMenu());
       press('y', b(3), addGames);
+      press('l1', b(4), () => $('#btnLayout').click()); press('r1', b(5), () => $('#btnSort').click());
       press('l2', b(6), () => spinMascot('l')); press('r2', b(7), () => spinMascot('r'));   // triggers spin the mascot
     } else {
       pad.held.a = b(0); pad.held.b = b(1); pad.held.x = b(2); pad.held.y = b(3);
@@ -726,7 +805,7 @@ lm.innerHTML = mascot.innerHTML;
 /* ================= boot ================= */
 (async function init() {
   setTheme(localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
-  setMuted(muted);
+  setMuted(muted); setSort(sortMode, false); setLayout(layout, false);
   tick(); setInterval(tick, 15000);
   games = mergeCovers((await call('list_games')) || []);
   sel = 0; render(); poll(); requestAnimationFrame(spinLoop); cheer(2600); poke();
