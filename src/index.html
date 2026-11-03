@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Disk Launcher</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg"></div>
+
+<header class="top">
+  <div class="avatar"><svg viewBox="0 0 24 24"><path d="M7 8h10a4 4 0 0 1 3.9 4.9l-.7 3.2a2.5 2.5 0 0 1-4.3.9L14.4 15H9.6l-1.5 2a2.5 2.5 0 0 1-4.3-.9l-.7-3.2A4 4 0 0 1 7 8Z" fill="currentColor"/></svg></div>
+  <div class="status">
+    <div class="mascot" id="mascot" data-s="awake" aria-hidden="true"><div class="mdisc"><div class="mplate"><div class="face mface"></div></div><i class="cheek l"></i><i class="cheek r"></i><i class="eye l"></i><i class="eye r"></i></div><span class="zz"><b>z</b><b>z</b><b>z</b></span></div>
+    <div class="clock"><span id="time"></span><span id="date"></span></div>
+    <svg id="wifi" class="ico" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.8 12.6a9.3 9.3 0 0 1 12.4 0M9.1 16.2a4.7 4.7 0 0 1 5.8 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="19.3" r="1.5" fill="currentColor"/></svg>
+    <span id="batt" class="batt" hidden></span>
+  </div>
+</header>
+
+<main class="stage">
+  <div class="rail" id="rail"><div class="track" id="track"></div><div class="empty" id="empty" hidden>Put your games here</div></div>
+  <div class="meta" id="meta">
+    <h1 id="name"></h1>
+    <p id="sub"></p>
+  </div>
+</main>
+
+<footer class="dock">
+  <button class="round" id="btnAdd" data-label="Add game" data-sub="Pick an .exe from your PC"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+  <button class="round" id="btnScan" data-label="Find games" data-sub="Look for Steam, Epic and GOG games or scan a folder"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M15.2 15.2L20 20" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg></button>
+  <button class="round" id="btnStats" data-label="Stats" data-sub="Your play time and streak"><svg viewBox="0 0 24 24"><path d="M6 20v-8M12 20V4M18 20v-5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg></button>
+  <button class="round" id="btnTheme" data-label="Theme" data-sub="Switch between light and dark"></button>
+  <button class="round" id="btnSound" data-label="Sound" data-sub="On"></button>
+  <button class="round" id="btnFull" data-label="Fullscreen" data-sub="Fill the whole screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+</footer>
+
+<div class="hints l"><span><b>A</b> Start</span><span><b>B</b> Back</span><span><b>X</b> Options</span></div>
+<div class="hints r"><span><b>Y</b> Add game</span><span><b>R2</b> Spin</span></div>
+
+<div class="menu" id="menu" hidden>
+  <button id="mRename">Rename</button>
+  <button id="mCover">Set disc image…</button>
+  <button id="mUncover">Remove disc image</button>
+  <button id="mRemove" class="danger">Remove from launcher</button>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <form id="renameForm">
+    <label for="renameInput">Game name</label>
+    <input id="renameInput" autocomplete="off" spellcheck="false">
+    <div class="row"><button type="button" id="renameCancel">Cancel</button><button type="submit" class="primary">Save</button></div>
+  </form>
+</div>
+
+<div class="modal" id="scan" hidden>
+  <div class="panel">
+    <h2>Find games</h2>
+    <p class="lead" id="scanLead"></p>
+    <div class="slist" id="scanList"></div>
+    <p class="note" id="scanNote"></p>
+    <button class="x" id="scanClose" aria-label="Close">&times;</button>
+  </div>
+</div>
+
+<div class="modal" id="stats" hidden>
+  <div class="panel">
+    <h2>Your play time</h2>
+    <p class="lead" id="statsLead"></p>
+    <div class="cards">
+      <div class="stat"><span>Total time</span><b id="stTotal"></b></div>
+      <div class="stat"><span>Most played</span><b id="stTop"></b></div>
+      <div class="stat"><span>Streak</span><b id="stStreak"></b><i id="stStreakSub"></i></div>
+    </div>
+    <div class="bars" id="stBars"></div>
+    <p class="note">Time counts while the launcher can see the game running.</p>
+    <button class="x" id="statsClose" aria-label="Close">&times;</button>
+  </div>
+</div>
+
+<div class="launch" id="launch" hidden>
+  <div class="mascot lmascot" id="lmascot" data-s="happy"></div>
+  <div class="lcard" id="lcard"></div>
+  <p id="launchName"></p>
+  <p id="launchSub"></p>
+  <button class="back" id="launchBack">Back to launcher</button>
+</div>
+
+<input type="file" id="coverFile" accept="image/*" hidden>
+<div class="toast" id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
