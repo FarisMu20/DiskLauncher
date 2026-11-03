@@ -7,8 +7,10 @@ The look is inspired by the Switch 2 home menu. This is a fan project and is not
 
 ## Screenshots
 
-![Home screen](screenshots/home.png)
-![Now playing](screenshots/now-playing.png)
+<img width="960" height="540" alt="Screenshot 2026-11-03 165941" src="https://github.com/user-attachments/assets/04fcd3bb-4ac0-41c5-b7e5-484068b6b7d5" />
+
+<img width="960" height="540" alt="image" src="https://github.com/user-attachments/assets/e719559d-8989-4f3c-8d97-1644ab3b2068" />
+
 
 ## Features
 
