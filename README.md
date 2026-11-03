@@ -7,12 +7,14 @@ The look is inspired by the Switch 2 home menu. This is a fan project and is not
 
 ## Screenshots
 
-<img width="960" height="540" alt="Screenshot 2026-11-03 165941" src="https://github.com/user-attachments/assets/04fcd3bb-4ac0-41c5-b7e5-484068b6b7d5" />
+<img width="960" height="540" alt="image" src="https://github.com/user-attachments/assets/a98eef46-75c7-46c0-8652-e1ce9a418d2d" />
 
 
 
 
-<img width="960" height="540" alt="image" src="https://github.com/user-attachments/assets/e719559d-8989-4f3c-8d97-1644ab3b2068" />
+
+<img width="960" height="540" alt="image" src="https://github.com/user-attachments/assets/895f757c-e423-4e34-97c1-e3ef92bb7a89" />
+
 
 
 ## Features
